@@ -1,0 +1,34 @@
+{
+  "name": "forest-data-api",
+  "image": "mcr.microsoft.com/devcontainers/base:ubuntu",
+
+  "features": {
+    "ghcr.io/devcontainers/features/dotnet:2": {
+      "version": "10.0"
+    },
+    "ghcr.io/jlaundry/devcontainer-features/azure-functions-core-tools:1": {
+      "version": "4"
+    },
+    "ghcr.io/devcontainers/features/docker-in-docker:2": {}
+  },
+
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ms-dotnettools.csdevkit",
+        "ms-azuretools.vscode-azurefunctions"
+      ]
+    }
+  },
+
+  "forwardPorts": [7071],
+  "portsAttributes": {
+    "7071": {
+      "label": "Functions host"
+    }
+  },
+
+  "postCreateCommand": "dotnet --version && func --version && docker --version",
+
+  "remoteUser": "vscode"
+}
