@@ -1,6 +1,6 @@
 {
   "name": "forest-data-api",
-  "image": "mcr.microsoft.com/devcontainers/base:ubuntu",
+    "image": "mcr.microsoft.com/devcontainers/base:ubuntu-24.04",
 
   "features": {
     "ghcr.io/devcontainers/features/dotnet:2": {
