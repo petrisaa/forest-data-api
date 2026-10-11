@@ -39,3 +39,26 @@ stand data for map sheet K3243H from the Finnish Forest Centre and place it in `
 
 The files contain public open data only: stand geometries and forest attributes. They
 contain no property identifiers, owner information or other personal data.
+
+## Database
+
+Local development uses **PostgreSQL 17**, run in Docker (the dev container includes
+Docker-in-Docker). The schema is in `db/schema.sql`.
+
+```bash
+docker run -d --name forest-db -e POSTGRES_PASSWORD=postgres -p 5432:5432 postgres:17
+docker exec -i forest-db psql -U postgres -v ON_ERROR_STOP=1 < db/schema.sql
+```
+
+Repeated imports are upserted on `stand.source_id`, which holds the `st:Stand/@id`
+attribute from the XML.
+
+## Known limitations
+
+- **Split or merged stands leave stale rows.** `st:Stand/@id` appears to be a stable
+  database key in the Finnish Forest Centre system, but a stand that is split or merged
+  most likely gets a new id. The upsert then inserts the new stand, and the row for the
+  old id stays in the database even though it no longer appears in any export.
+  A possible solution is to track the last batch that contained each stand (for example a
+  `last_seen_batch_id` column) and mark stands missing from a full export of the same map
+  sheet as removed (for example with a `deleted_at` timestamp) instead of deleting them.
