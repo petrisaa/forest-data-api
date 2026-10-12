@@ -22,6 +22,7 @@ if (string.IsNullOrWhiteSpace(connectionString))
 
 builder.Services.AddSingleton(NpgsqlDataSource.Create(connectionString));
 builder.Services.AddSingleton<StandImportRepository>();
+builder.Services.AddSingleton<StandSummaryRepository>();
 
 if (!string.IsNullOrEmpty(Environment.GetEnvironmentVariable("APPLICATIONINSIGHTS_CONNECTION_STRING")))
 {

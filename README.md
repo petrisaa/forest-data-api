@@ -129,6 +129,42 @@ The second import updates the existing rows instead of creating duplicates:
 | 413 | Body larger than 5 MB |
 | 500 | Database error; the transaction was rolled back |
 
+### GET /api/stands/summary
+
+Returns stand totals grouped by main tree species, calculated in the database with a single
+`GROUP BY` query:
+
+- `standCount`: number of stands
+- `totalAreaHa`: sum of `area_ha`
+- `totalVolumeM3`: sum of `area_ha × volume_m3_per_ha`, rounded to 0.1 m³
+- `volumeMissingCount`: stands without a volume; they are not included in `totalVolumeM3`
+
+Stands without a main tree species are grouped together with `mainTreeSpecies: null`, listed
+last. `speciesName` is set for known codes (1 = pine, 2 = spruce, 29 = broadleaf) and is
+`null` for other codes.
+
+```bash
+curl "http://localhost:7071/api/stands/summary"
+```
+
+Example response after importing `data/sample-stands.xml`:
+
+```json
+{
+  "species": [
+    { "mainTreeSpecies": 1, "speciesName": "pine", "standCount": 9, "totalAreaHa": 5.48, "totalVolumeM3": 359.8, "volumeMissingCount": 0 },
+    { "mainTreeSpecies": 2, "speciesName": "spruce", "standCount": 5, "totalAreaHa": 5.10, "totalVolumeM3": 23.4, "volumeMissingCount": 0 },
+    { "mainTreeSpecies": 29, "speciesName": "broadleaf", "standCount": 3, "totalAreaHa": 3.55, "totalVolumeM3": 57.4, "volumeMissingCount": 0 },
+    { "mainTreeSpecies": null, "speciesName": null, "standCount": 3, "totalAreaHa": 2.52, "totalVolumeM3": 0.0, "volumeMissingCount": 0 }
+  ]
+}
+```
+
+| Status | Meaning |
+|---|---|
+| 200 | Summary returned; `species` is empty if there are no stands |
+| 500 | Database error |
+
 ## Known limitations
 
 - **Split or merged stands leave stale rows.** `st:Stand/@id` appears to be a stable
