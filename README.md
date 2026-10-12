@@ -53,6 +53,82 @@ docker exec -i forest-db psql -U postgres -v ON_ERROR_STOP=1 < db/schema.sql
 Repeated imports are upserted on `stand.source_id`, which holds the `st:Stand/@id`
 attribute from the XML.
 
+## API
+
+The Azure Functions project (.NET 10, isolated worker) is in `src/ForestApi`.
+
+### Configuration
+
+The database connection string is read from the `ConnectionStrings__ForestDb` setting.
+For local development, copy the example settings file and set the password:
+
+```bash
+cp src/ForestApi/local.settings.example.json src/ForestApi/local.settings.json
+```
+
+`local.settings.json` is ignored by git and must never be committed. In Azure, set
+`ConnectionStrings__ForestDb` as an application setting.
+
+### Running locally
+
+```bash
+cd src/ForestApi
+func start
+```
+
+### POST /api/stands/import
+
+Imports an MV1.9 XML file sent as the raw request body (max 5 MB). The optional
+`fileName` query parameter is stored in `import_batch.file_name`.
+
+```bash
+curl -X POST -H "Content-Type: application/xml" \
+  --data-binary @data/sample-stands.xml \
+  "http://localhost:7071/api/stands/import?fileName=sample-stands.xml"
+```
+
+For each `st:Stand` the function reads `@id` (`source_id`), `st:StandNumber`, `st:Area`,
+`st:MainTreeSpecies`, `st:DevelopmentClass`, and the volume and date of the current state
+tree stand data (`ts:TreeStandDataDate type="2"`). A stand is rejected if:
+
+- `area_ha` is missing, not a number, or not greater than 0
+- `main_tree_species` is present but not between 1 and 30
+- the volume is negative
+- `@id` or `st:StandNumber` is missing, `@id` is repeated in the file, or a value does not
+  fit the database column
+
+Accepted stands are upserted on `source_id` in a single transaction together with an
+`import_batch` row. Example response:
+
+```json
+{
+  "batchId": 1,
+  "fileName": "sample-stands.xml",
+  "insertedCount": 20,
+  "updatedCount": 0,
+  "rejectedCount": 2,
+  "rejected": [
+    { "sourceId": "9929729766", "reason": "area_ha must be greater than 0 (was -1.50)" },
+    { "sourceId": "9829729766", "reason": "main_tree_species must be between 1 and 30 (was 99)" }
+  ]
+}
+```
+
+Importing `data/sample-stands.xml` twice against an empty database gives these results.
+The second import updates the existing rows instead of creating duplicates:
+
+| Import | `insertedCount` | `updatedCount` | `rejectedCount` |
+|---|---|---|---|
+| First | 20 | 0 | 2 |
+| Second | 0 | 20 | 2 |
+
+| Status | Meaning |
+|---|---|
+| 200 | Imported; rejected stands are listed in the response |
+| 400 | Empty body, malformed XML, DTD present, or root is not `ForestPropertyData` |
+| 413 | Body larger than 5 MB |
+| 500 | Database error; the transaction was rolled back |
+
 ## Known limitations
 
 - **Split or merged stands leave stale rows.** `st:Stand/@id` appears to be a stable

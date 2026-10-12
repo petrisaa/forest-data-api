@@ -427,3 +427,6 @@ FodyWeavers.xsd
 # Official VS Code C# Dev Kit Extension exclusion
 #*.lscache
 data/raw/
+
+# Azure Functions local settings (contain connection strings and secrets)
+local.settings.json

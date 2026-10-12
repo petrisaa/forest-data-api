@@ -1,0 +1,8 @@
+{
+    "IsEncrypted": false,
+    "Values": {
+        "AzureWebJobsStorage": "UseDevelopmentStorage=true",
+        "FUNCTIONS_WORKER_RUNTIME": "dotnet-isolated",
+        "ConnectionStrings__ForestDb": "Host=localhost;Port=5432;Database=postgres;Username=postgres;Password=<password>"
+    }
+}
