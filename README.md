@@ -1,5 +1,19 @@
 # forest-data-api
-C# Azure Functions API for ingesting forest stand XML data into PostgreSQL
+
+A C# Azure Functions API that imports open forest resource data (XML) from the Finnish
+Forest Centre (Suomen metsäkeskus) into PostgreSQL. Each forest stand is validated before
+it is stored, and invalid stands are reported back to the caller. The API also provides a
+summary of stands, area and volume grouped by main tree species.
+
+## Architecture
+
+```mermaid
+flowchart LR
+    A[Finnish Forest Centre<br/>MV1.9 XML] --> B[POST /api/stands/import]
+    B --> C{Validation}
+    C -->|valid stands| D[(PostgreSQL)]
+    D --> E[GET /api/stands/summary]
+```
 
 ## Data
 
@@ -46,8 +60,8 @@ Local development uses **PostgreSQL 17**, run in Docker (the dev container inclu
 Docker-in-Docker). The schema is in `db/schema.sql`.
 
 ```bash
-docker run -d --name forest-db -e POSTGRES_PASSWORD=postgres -p 5432:5432 postgres:17
-docker exec -i forest-db psql -U postgres -v ON_ERROR_STOP=1 < db/schema.sql
+docker run -d --name metsa-pg -e POSTGRES_PASSWORD=postgres -p 5432:5432 postgres:17
+docker exec -i metsa-pg psql -U postgres -v ON_ERROR_STOP=1 < db/schema.sql
 ```
 
 Repeated imports are upserted on `stand.source_id`, which holds the `st:Stand/@id`
@@ -165,6 +179,13 @@ Example response after importing `data/sample-stands.xml`:
 | 200 | Summary returned; `species` is empty if there are no stands |
 | 500 | Database error |
 
+## Data findings
+
+The stand volumes in `data/sample-stands.xml` were checked for plausibility. 13 of the 20
+valid stands are non-forest land (`st:MainGroup` = 3), which explains the small volumes in
+the summary. On the 7 forest land stands (`st:MainGroup` = 1), the current state volume is
+60.3–312.8 m³/ha.
+
 ## Known limitations
 
 - **Split or merged stands leave stale rows.** `st:Stand/@id` appears to be a stable
@@ -174,3 +195,30 @@ Example response after importing `data/sample-stands.xml`:
   A possible solution is to track the last batch that contained each stand (for example a
   `last_seen_batch_id` column) and mark stands missing from a full export of the same map
   sheet as removed (for example with a `deleted_at` timestamp) instead of deleting them.
+- **The local database uses the `postgres` superuser.** This keeps local setup simple.
+  In production, the API should connect with a dedicated role that has only the
+  privileges it needs.
+- **Tree species codes are not fully verified.** Codes such as `103` have not been checked
+  against the official tree species code list.
+- **The summary includes non-forest land.** The land class (`st:MainGroup`) is not stored,
+  so non-forest land stands are counted together with forest land stands.
+- **`AzureWebJobsStorage` warnings when running locally.** The Functions host logs
+  warnings about `AzureWebJobsStorage` when no storage account or emulator is configured.
+  The HTTP functions work regardless.
+- **Not deployed to Azure yet.** The API has so far only been run locally.
+
+## Next steps
+
+- Deploy to Azure with GitHub Actions
+- Scheduled imports
+- Filtering by land class
+- GeoPackage support
+- PostGIS for stand geometries
+
+## AI-assisted development
+
+This project was built with Claude Code as a coding assistant. I made the design decisions: the data model, the validation rules, how duplicate imports are handled (upsert on the source id) and which data to leave out. Claude Code wrote most of the C# and SQL based on those decisions, and I reviewed every change before merging it through a pull request.
+
+I tested each step myself. I debugged a failed import from the stack trace (a wrong database password), verified that re-importing the same file updates the existing stands instead of duplicating them, and checked the summary endpoint against my own SQL query. When the volumes looked suspiciously low, I traced the cause to non-forest land in the sample instead of accepting the numbers.
+
+Claude Code worked on separate branches in an isolated Codespace, and secrets were kept out of the repository.
