@@ -217,8 +217,8 @@ the summary. On the 7 forest land stands (`st:MainGroup` = 1), the current state
 
 ## AI-assisted development
 
-This project was built with Claude Code as a coding assistant. I made the design decisions: the data model, the validation rules, how duplicate imports are handled (upsert on the source id) and which data to leave out. Claude Code wrote most of the C# and SQL based on those decisions, and I reviewed every change before merging it through a pull request.
+This project was built with Claude Code, which wrote the code and SQL. My role was to direct and verify the work: I chose the approach for key questions such as how duplicate imports are handled, gave Claude Code the tasks, and reviewed every change through a pull request before merging it.
 
-I tested each step myself. I debugged a failed import from the stack trace (a wrong database password), verified that re-importing the same file updates the existing stands instead of duplicating them, and checked the summary endpoint against my own SQL query. When the volumes looked suspiciously low, I traced the cause to non-forest land in the sample instead of accepting the numbers.
+I tested each step myself. I ran the imports, verified that re-importing the same file updates the existing stands instead of duplicating them, fixed a failed import caused by a wrong database password, and compared the summary endpoint against an independent SQL query. When the volumes looked suspiciously low, I had the cause investigated instead of accepting the numbers: most of the sample stands turned out to be non-forest land.
 
-Claude Code worked on separate branches in an isolated Codespace, and secrets were kept out of the repository.
+Claude Code worked on separate branches in an isolated Codespace, and secrets were kept out of the repository. 
